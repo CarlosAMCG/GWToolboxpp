@@ -341,7 +341,8 @@ namespace { // private module-only namespace
             return nullptr;
         }
 
-        WinHttpSetTimeouts(hSession, 10000, 10000, 30000, 30000);
+        // WebSocket connections can legitimately remain idle indefinitely.
+        WinHttpSetTimeouts(hSession, 10000, 10000, 30000, 0);
 
         HINTERNET hConnect = WinHttpConnect(hSession, whost.c_str(),
                                              static_cast<INTERNET_PORT>(port), 0);
