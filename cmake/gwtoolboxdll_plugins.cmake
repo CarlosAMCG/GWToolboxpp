@@ -30,7 +30,8 @@ macro(add_tb_plugin PLUGIN)
     add_library(${PLUGIN} SHARED)
     file(GLOB SOURCES CONFIGURE_DEPENDS
         "${PROJECT_SOURCE_DIR}/plugins/${PLUGIN}/*.h"
-        "${PROJECT_SOURCE_DIR}/plugins/${PLUGIN}/*.cpp")
+        "${PROJECT_SOURCE_DIR}/plugins/${PLUGIN}/*.cpp"
+        "${PROJECT_SOURCE_DIR}/plugins/${PLUGIN}/*.rc")
     target_sources(${PLUGIN} PRIVATE ${SOURCES})
     target_include_directories(${PLUGIN} PRIVATE "${PROJECT_SOURCE_DIR}/plugins/${PLUGIN}")
     target_link_libraries(${PLUGIN} PRIVATE plugin_base)
@@ -54,3 +55,8 @@ macro(add_tb_plugin PLUGIN)
 endmacro()
 
 add_tb_plugin(ExamplePlugin)
+add_tb_plugin(ChatTranslator)
+target_link_libraries(ChatTranslator PRIVATE fasttext RestClient)
+if(MSVC)
+    target_compile_options(ChatTranslator PRIVATE /wd4244)
+endif()

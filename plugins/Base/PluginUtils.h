@@ -44,6 +44,7 @@ namespace PluginUtils {
     std::wstring RemovePunctuation(std::wstring s);
     std::string RemovePunctuation(std::string s);
     std::wstring RemoveDiacritics(const std::wstring& s);
+    std::wstring StripTags(const std::wstring& s);
 
     std::string WStringToString(const std::wstring& s);
     std::wstring StringToWString(const std::string& s);
@@ -155,7 +156,7 @@ namespace PluginUtils {
         bool decoded = false;
         bool sanitised = false;
         virtual void sanitise();
-        GW::Constants::Language language_id = static_cast<GW::Constants::Language>(-1);
+        GW::Constants::Language language_id = static_cast<GW::Constants::Language>(0xff);
         static void OnStringDecoded(void* param, const wchar_t* decoded);
 
     public:

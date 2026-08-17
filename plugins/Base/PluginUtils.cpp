@@ -297,6 +297,30 @@ namespace PluginUtils {
         return out;
     }
 
+    std::wstring StripTags(const std::wstring& s)
+    {
+        std::wstring result;
+        size_t position = 0;
+        while (position < s.size()) {
+            const size_t tag_start = s.find(L'<', position);
+            if (tag_start == std::wstring::npos) {
+                result.append(s, position, std::wstring::npos);
+                break;
+            }
+            result.append(s, position, tag_start - position);
+            const size_t tag_end = s.find(L'>', tag_start);
+            if (tag_end == std::wstring::npos) {
+                result.append(s, tag_start, std::wstring::npos);
+                break;
+            }
+            if (tag_end == tag_start + 1) {
+                result.append(L"<>");
+            }
+            position = tag_end + 1;
+        }
+        return result;
+    }
+
     // Convert a wide Unicode string to an UTF8 string
     std::string WStringToString(const std::wstring& s)
     {
@@ -754,8 +778,7 @@ namespace PluginUtils {
     {
         if (!sanitised && !decoded_ws.empty()) {
             sanitised = true;
-            static const std::wregex sanitiser(L"<[^>]+>");
-            decoded_ws = std::regex_replace(decoded_ws, sanitiser, L"");
+            decoded_ws = StripTags(decoded_ws);
         }
     }
 
