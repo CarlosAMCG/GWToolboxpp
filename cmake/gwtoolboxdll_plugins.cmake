@@ -61,5 +61,5 @@ if(MSVC)
     target_compile_options(ChatTranslator PRIVATE /wd4244)
 endif()
 
-add_tb_plugin(ObsRecorder)
-target_link_libraries(ObsRecorder PRIVATE easywsclient bcrypt ws2_32)
+add_tb_plugin(Recorder)
+target_link_libraries(Recorder PRIVATE mfplat mfreadwrite mfuuid)

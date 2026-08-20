@@ -2,8 +2,8 @@
 #include <winres.h>
 
 VS_VERSION_INFO VERSIONINFO
-FILEVERSION 1,0,0,0
-PRODUCTVERSION 1,0,0,0
+FILEVERSION 1,1,0,0
+PRODUCTVERSION 1,1,0,0
 FILEFLAGSMASK 0x3fL
 FILEFLAGS 0x0L
 FILEOS VOS_NT_WINDOWS32
@@ -15,12 +15,12 @@ BEGIN
         BLOCK "040904E4"
         BEGIN
             VALUE "CompanyName", "GWToolbox community"
-            VALUE "FileDescription", "Automatic OBS recorder for Guild Wars"
-            VALUE "FileVersion", "1.0.0"
-            VALUE "InternalName", "ObsRecorder"
-            VALUE "OriginalFilename", "ObsRecorder.dll"
-            VALUE "ProductName", "GWToolbox OBS Recorder"
-            VALUE "ProductVersion", "1.0.0"
+            VALUE "FileDescription", "Automatic Recorder for Guild Wars"
+            VALUE "FileVersion", "1.1.0"
+            VALUE "InternalName", "Recorder"
+            VALUE "OriginalFilename", "Recorder.dll"
+            VALUE "ProductName", "GWToolbox Recorder"
+            VALUE "ProductVersion", "1.1.0 Preview"
         END
     END
     BLOCK "VarFileInfo"
