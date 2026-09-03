@@ -211,8 +211,20 @@ void Recorder::Draw(IDirect3DDevice9* device)
     if (ImGui::Begin("Recorder indicator", nullptr,
                      ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoFocusOnAppearing)) {
         const auto warning = warning_minutes && seconds >= static_cast<int64_t>(warning_minutes) * 60;
-        ImGui::TextColored(warning ? ImVec4(1.f, .65f, 0.f, 1.f) : ImVec4(1.f, .2f, .2f, 1.f),
-                           "REC  %02lld:%02lld:%02lld", seconds / 3600, seconds / 60 % 60, seconds % 60);
+        const auto label = std::format("REC  {:02}:{:02}:{:02}", seconds / 3600, seconds / 60 % 60, seconds % 60);
+        const auto position = ImGui::GetCursorScreenPos();
+        ImGui::InvisibleButton("##drag_recorder_indicator", ImGui::CalcTextSize(label.c_str()));
+        ImGui::GetWindowDrawList()->AddText(position,
+                                            ImGui::ColorConvertFloat4ToU32(warning
+                                                ? ImVec4(1.f, .65f, 0.f, 1.f)
+                                                : ImVec4(1.f, .2f, .2f, 1.f)),
+                                            label.c_str());
+        if (ImGui::IsItemHovered() || ImGui::IsItemActive()) ImGui::SetMouseCursor(ImGuiMouseCursor_ResizeAll);
+        if (ImGui::IsItemActive() && ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
+            const auto& delta = ImGui::GetIO().MouseDelta;
+            const auto window_position = ImGui::GetWindowPos();
+            ImGui::SetWindowPos(ImVec2(window_position.x + delta.x, window_position.y + delta.y));
+        }
     }
     ImGui::End();
 }
