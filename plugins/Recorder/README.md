@@ -22,7 +22,9 @@ The default Windows output device (headphones or speakers) and default microphon
 
 ## Notes
 
+- Use `Start recording` in settings to record manually, independently of the automatic area filter. Manual recording ends when you stop it or leave the map.
 - A compact `REC` indicator is displayed while recording and can be disabled.
+- Drag the `REC` text to move the indicator. Press `Stop` beside it (or `Stop recording` in settings) to finish early without restarting automatically in the same visit to the area.
 - When a recording finishes, the plugin asks whether to save or discard it. This confirmation can be disabled to save automatically.
 - The plugin warns in chat when a recording exceeds the configured duration.
 - The plugin never deletes recordings.

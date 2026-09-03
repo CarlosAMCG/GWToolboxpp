@@ -114,6 +114,7 @@ void Recorder::Terminate()
 
 bool Recorder::BeginMapRecording()
 {
+    if (!recorder || !GW::Map::GetIsMapLoaded() || recorder->IsRecording() || recorder->HasPendingRecording()) return false;
     const auto map = GW::Map::GetMapInfo(GW::Map::GetMapID());
     const auto player_name = GW::PlayerMgr::GetPlayerName(GW::PlayerMgr::GetPlayerNumber());
     if (!map || !map->name_id || !player_name || !*player_name) return false;
@@ -142,6 +143,7 @@ bool Recorder::BeginMapRecording()
 
 void Recorder::EndMapRecording()
 {
+    manual_recording = false;
     pending_map_name = false;
     recording_requested = false;
     duration_warning_shown = false;
@@ -181,9 +183,17 @@ void Recorder::Update(float)
         && GW::Map::GetIsMapLoaded()
         && GW::Map::GetInstanceType() == GW::Constants::InstanceType::Explorable
         && !GW::Map::GetIsObserving();
-    if (recordable && !was_recordable && !recording_requested) was_recordable = BeginMapRecording();
-    if (!recordable && was_recordable) EndMapRecording();
-    if (!recordable) was_recordable = false;
+    if (manual_recording) {
+        if (!GW::Map::GetIsMapLoaded() || current_map_id != recording_map_id) {
+            EndMapRecording();
+            was_recordable = false;
+        }
+    }
+    else {
+        if (recordable && !was_recordable && !recording_requested) was_recordable = BeginMapRecording();
+        if (!recordable && was_recordable) EndMapRecording();
+        if (!recordable) was_recordable = false;
+    }
     if (pending_map_name && decoded_map_name[0]) {
         pending_map_name = false;
         recording_stem = RecordingStem(recording_character, decoded_map_name, recording_map_id);
@@ -225,6 +235,8 @@ void Recorder::Draw(IDirect3DDevice9* device)
             const auto window_position = ImGui::GetWindowPos();
             ImGui::SetWindowPos(ImVec2(window_position.x + delta.x, window_position.y + delta.y));
         }
+        ImGui::SameLine();
+        if (ImGui::SmallButton("Stop")) EndMapRecording();
     }
     ImGui::End();
 }
@@ -232,6 +244,15 @@ void Recorder::Draw(IDirect3DDevice9* device)
 void Recorder::DrawSettings()
 {
     ImGui::TextDisabled("Recorder 1.1.0 Preview");
+    if (recorder && recorder->IsRecording()) {
+        if (ImGui::Button("Stop recording")) EndMapRecording();
+    }
+    else if (recorder && !recorder->HasPendingRecording() && GW::Map::GetIsMapLoaded()) {
+        if (ImGui::Button("Start recording") && BeginMapRecording()) {
+            manual_recording = true;
+            was_recordable = true;
+        }
+    }
     ImGui::Spacing();
     ImGui::TextDisabled("AUTOMATIC RECORDING");
     ImGui::Checkbox("Record explorable areas automatically", &automatic_recording);

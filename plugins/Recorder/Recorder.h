@@ -42,6 +42,7 @@ private:
     bool was_recordable = false;
     bool pending_map_name = false;
     bool recording_requested = false;
+    bool manual_recording = false;
     bool duration_warning_shown = false;
     uint32_t new_map_id = 0;
     std::vector<uint32_t> available_map_ids{307, 266, 72, 34, 474};
