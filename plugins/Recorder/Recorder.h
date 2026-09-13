@@ -8,7 +8,9 @@ public:
     const char* Name() const override { return "Recorder"; }
     const char* Icon() const override { return ICON_FA_VIDEO; }
     bool HasSettings() const override { return true; }
+    bool ShowInMainMenu() const override { return show_in_main_bar; }
     bool* GetVisiblePtr() override;
+    bool DrawTabButton(bool show_icon, bool show_text, bool center_align_text) override;
 
     void Initialize(ImGuiContext* ctx, ImGuiAllocFns allocator_fns, HMODULE toolbox_dll) override;
     void SignalTerminate() override;
@@ -20,15 +22,20 @@ public:
     void LoadSettings(const wchar_t* folder) override;
     void SaveSettings(const wchar_t* folder) override;
 
+    void CapturePresentedFrame(IDirect3DDevice9* device);
+
 private:
     bool BeginMapRecording();
     void EndMapRecording();
     void DrawSaveConfirmation();
+    void DrawRecorderWindow();
 
     std::unique_ptr<class VideoRecorder> recorder;
     bool automatic_recording = true;
     bool restrict_to_selected_maps = true;
     bool show_indicator = true;
+    bool show_in_main_bar = false;
+    bool recorder_window_visible = false;
     bool confirm_before_saving = true;
     bool render_enabled = true;
     uint32_t fps = 30;

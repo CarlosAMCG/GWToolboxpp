@@ -7,11 +7,49 @@
 #include <GWCA/Managers/MapMgr.h>
 #include <GWCA/Managers/PlayerMgr.h>
 #include <GWCA/Managers/UIMgr.h>
+#include <MinHook.h>
 
 #include <PluginUtils.h>
 
 namespace RecorderDetail {
     using namespace std::chrono_literals;
+
+    using PresentCallback = HRESULT(__stdcall*)(IDirect3DDevice9*, const RECT*, const RECT*, HWND, const RGNDATA*);
+    PresentCallback present_target = nullptr;
+    PresentCallback present_original = nullptr;
+    Recorder* active_recorder = nullptr;
+
+    HRESULT __stdcall OnPresent(IDirect3DDevice9* device, const RECT* source, const RECT* destination,
+                                const HWND window, const RGNDATA* dirty_region)
+    {
+        if (active_recorder) active_recorder->CapturePresentedFrame(device);
+        return present_original(device, source, destination, window, dirty_region);
+    }
+
+    void InstallPresentHook(IDirect3DDevice9* device)
+    {
+        if (present_target || !device) return;
+        const auto vtable = *reinterpret_cast<void***>(device);
+        present_target = reinterpret_cast<PresentCallback>(vtable[17]);
+        MH_Initialize();
+        if (MH_CreateHook(reinterpret_cast<void*>(present_target), OnPresent,
+                          reinterpret_cast<void**>(&present_original)) != MH_OK) {
+            present_target = nullptr;
+            present_original = nullptr;
+            return;
+        }
+        MH_EnableHook(reinterpret_cast<void*>(present_target));
+    }
+
+    void RemovePresentHook()
+    {
+        active_recorder = nullptr;
+        if (!present_target) return;
+        MH_DisableHook(reinterpret_cast<void*>(present_target));
+        MH_RemoveHook(reinterpret_cast<void*>(present_target));
+        present_target = nullptr;
+        present_original = nullptr;
+    }
 
     constexpr std::array default_maps{
         std::pair{307u, "Deep"},
@@ -86,15 +124,42 @@ bool* Recorder::GetVisiblePtr()
     return &render_enabled;
 }
 
+bool Recorder::DrawTabButton(const bool show_icon, const bool show_text, const bool center_align_text)
+{
+    ImGui::PushStyleColor(ImGuiCol_Button,
+                          recorder_window_visible ? ImGui::GetStyle().Colors[ImGuiCol_Button] : ImVec4(0, 0, 0, 0));
+    const auto position = ImGui::GetCursorScreenPos();
+    const auto text_size = ImGui::CalcTextSize(Name());
+    const auto width = ImGui::GetContentRegionAvail().x;
+    const auto icon_size = show_icon ? ImGui::GetTextLineHeightWithSpacing() : 0.f;
+    const auto text_x = center_align_text
+        ? position.x + icon_size + (width - icon_size - text_size.x) / 2
+        : position.x + icon_size + ImGui::GetStyle().ItemSpacing.x;
+    const auto clicked = ImGui::Button("##recorder_main_bar", ImVec2(width, ImGui::GetTextLineHeightWithSpacing()));
+    if (show_icon) {
+        ImGui::GetWindowDrawList()->AddText(ImVec2(position.x, position.y + ImGui::GetStyle().ItemSpacing.y / 2),
+                                            ImGui::GetColorU32(ImGuiCol_Text), Icon());
+    }
+    if (show_text) {
+        ImGui::GetWindowDrawList()->AddText(ImVec2(text_x, position.y + ImGui::GetStyle().ItemSpacing.y / 2),
+                                            ImGui::GetColorU32(ImGuiCol_Text), Name());
+    }
+    ImGui::PopStyleColor();
+    if (clicked) recorder_window_visible = !recorder_window_visible;
+    return clicked;
+}
+
 void Recorder::Initialize(ImGuiContext* ctx, const ImGuiAllocFns allocator_fns, const HMODULE toolbox_dll)
 {
     ToolboxPlugin::Initialize(ctx, allocator_fns, toolbox_dll);
     recorder = std::make_unique<VideoRecorder>();
+    active_recorder = this;
 }
 
 void Recorder::SignalTerminate()
 {
     ToolboxPlugin::SignalTerminate();
+    RemovePresentHook();
     if (recorder) {
         recorder->Stop();
         if (recorder->HasPendingRecording()) recorder->SavePending();
@@ -174,6 +239,31 @@ void Recorder::DrawSaveConfirmation()
     ImGui::EndPopup();
 }
 
+void Recorder::DrawRecorderWindow()
+{
+    if (!recorder_window_visible) return;
+    ImGui::SetNextWindowSize(ImVec2(280.f, 0.f), ImGuiCond_FirstUseEver);
+    if (ImGui::Begin(Name(), &recorder_window_visible, ImGuiWindowFlags_AlwaysAutoResize)) {
+        const auto is_recording = recorder && recorder->IsRecording();
+        ImGui::Text("Status: %s", recorder ? recorder->Status().c_str() : "Unavailable");
+        if (is_recording) {
+            const auto seconds = std::chrono::duration_cast<std::chrono::seconds>(recorder->RecordingDuration()).count();
+            ImGui::Text("REC  %02lld:%02lld:%02lld", seconds / 3600, seconds / 60 % 60, seconds % 60);
+            if (ImGui::Button("Stop recording")) EndMapRecording();
+        }
+        else if (recorder && !recorder->HasPendingRecording() && GW::Map::GetIsMapLoaded()) {
+            if (ImGui::Button("Start recording") && BeginMapRecording()) {
+                manual_recording = true;
+                was_recordable = true;
+            }
+        }
+        else if (recorder && recorder->HasPendingRecording()) {
+            ImGui::TextDisabled("Choose whether to save or discard the previous recording.");
+        }
+    }
+    ImGui::End();
+}
+
 void Recorder::Update(float)
 {
     const auto current_map_id = static_cast<uint32_t>(std::to_underlying(GW::Map::GetMapID()));
@@ -211,8 +301,9 @@ void Recorder::Update(float)
 
 void Recorder::Draw(IDirect3DDevice9* device)
 {
-    if (recorder) recorder->CaptureFrame(device);
+    InstallPresentHook(device);
     if (confirm_before_saving) DrawSaveConfirmation();
+    DrawRecorderWindow();
     const auto is_recording = recorder && recorder->IsRecording();
     if (!show_indicator || !is_recording) return;
     const auto duration = recorder->RecordingDuration();
@@ -239,6 +330,11 @@ void Recorder::Draw(IDirect3DDevice9* device)
         if (ImGui::SmallButton("Stop")) EndMapRecording();
     }
     ImGui::End();
+}
+
+void Recorder::CapturePresentedFrame(IDirect3DDevice9* device)
+{
+    if (recorder) recorder->CaptureFrame(device);
 }
 
 void Recorder::DrawSettings()
@@ -305,6 +401,7 @@ void Recorder::DrawSettings()
     }
     ImGui::Spacing();
     ImGui::Checkbox("Show REC indicator", &show_indicator);
+    ImGui::Checkbox("Show in main window", &show_in_main_bar);
     ImGui::Checkbox("Ask before saving completed recordings", &confirm_before_saving);
     ImGui::SetNextItemWidth(140.f);
     ImGui::InputScalar("Long recording warning (minutes)", ImGuiDataType_U32, &warning_minutes);
@@ -347,6 +444,8 @@ void Recorder::LoadSettings(const wchar_t* folder)
     LoadSetting("available_map_ids", available_map_ids);
     LoadSetting("enabled_map_ids", enabled_map_ids);
     LoadSetting("show_indicator", show_indicator);
+    LoadSetting("show_in_main_bar", show_in_main_bar);
+    LoadSetting("recorder_window_visible", recorder_window_visible);
     LoadSetting("confirm_before_saving", confirm_before_saving);
     LoadSetting("fps", fps);
     LoadSetting("bitrate_mbps", bitrate_mbps);
@@ -365,6 +464,8 @@ void Recorder::SaveSettings(const wchar_t* folder)
     SaveSetting("available_map_ids", available_map_ids);
     SaveSetting("enabled_map_ids", enabled_map_ids);
     SaveSetting("show_indicator", show_indicator);
+    SaveSetting("show_in_main_bar", show_in_main_bar);
+    SaveSetting("recorder_window_visible", recorder_window_visible);
     SaveSetting("confirm_before_saving", confirm_before_saving);
     SaveSetting("fps", fps);
     SaveSetting("bitrate_mbps", bitrate_mbps);

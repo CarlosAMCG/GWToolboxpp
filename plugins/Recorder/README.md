@@ -16,13 +16,14 @@ Each area can be enabled independently. Additional map IDs can be entered manual
 
 ## Video and audio
 
-Recorder captures the Guild Wars DirectX 9 backbuffer and uses Windows Media Foundation to create an H.264 MP4. The default settings are 30 FPS and 8 Mbps. Files are stored in `Videos\GWToolbox Recordings` unless another directory is configured.
+Recorder captures the final Guild Wars DirectX 9 frame, including GWToolbox windows and widgets, and uses Windows Media Foundation to create an H.264 MP4. The default settings are 30 FPS and 8 Mbps. Files are stored in `Videos\GWToolbox Recordings` unless another directory is configured.
 
 The default Windows output device (headphones or speakers) and default microphone can be mixed into one AAC stereo track. Each source can be disabled or given a separate volume.
 
 ## Notes
 
 - Use `Start recording` in settings to record manually, independently of the automatic area filter. Manual recording ends when you stop it or leave the map.
+- Enable `Show in main window` to add Recorder to the main menu. Its entry opens a compact control window with recording status and Start/Stop controls.
 - A compact `REC` indicator is displayed while recording and can be disabled.
 - Drag the `REC` text to move the indicator. Press `Stop` beside it (or `Stop recording` in settings) to finish early without restarting automatically in the same visit to the area.
 - When a recording finishes, the plugin asks whether to save or discard it. This confirmation can be disabled to save automatically.
