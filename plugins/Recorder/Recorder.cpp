@@ -245,8 +245,12 @@ void Recorder::DrawRecorderWindow()
     ImGui::SetNextWindowSize(ImVec2(280.f, 0.f), ImGuiCond_FirstUseEver);
     if (ImGui::Begin(Name(), &recorder_window_visible, ImGuiWindowFlags_AlwaysAutoResize)) {
         const auto is_recording = recorder && recorder->IsRecording();
+        ImGui::Checkbox("Record selected areas automatically", &automatic_recording);
+        ImGui::TextDisabled("Uses the area selection configured in Recorder settings.");
+        ImGui::Separator();
         ImGui::Text("Status: %s", recorder ? recorder->Status().c_str() : "Unavailable");
         if (is_recording) {
+            ImGui::Text("Mode: %s", manual_recording ? "Manual" : "Automatic");
             const auto seconds = std::chrono::duration_cast<std::chrono::seconds>(recorder->RecordingDuration()).count();
             ImGui::Text("REC  %02lld:%02lld:%02lld", seconds / 3600, seconds / 60 % 60, seconds % 60);
             if (ImGui::Button("Stop recording")) EndMapRecording();
